@@ -28,6 +28,13 @@ class SleepIQFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         await self.async_set_unique_id(import_config[CONF_USERNAME].lower())
         self._abort_if_unique_id_configured()
 
+        try:
+            await try_connection(self.hass, import_config)
+        except SleepIQLoginException:
+            return self.async_abort(reason="invalid_auth")
+        except SleepIQTimeoutException:
+            return self.async_abort(reason="cannot_connect")
+
         return self.async_create_entry(
             title=import_config[CONF_USERNAME], data=import_config
         )
@@ -53,6 +60,8 @@ class SleepIQFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 return self.async_create_entry(
                     title=user_input[CONF_USERNAME], data=user_input
                 )
+        else:
+            user_input = {}
 
         return self.async_show_form(
             step_id="user",
@@ -60,9 +69,7 @@ class SleepIQFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 {
                     vol.Required(
                         CONF_USERNAME,
-                        default=user_input.get(CONF_USERNAME)
-                        if user_input is not None
-                        else "",
+                        default=user_input.get(CONF_USERNAME),
                     ): str,
                     vol.Required(CONF_PASSWORD): str,
                 }
